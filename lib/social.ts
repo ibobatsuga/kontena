@@ -1,7 +1,7 @@
 import { db, runtime } from './server';
 export function userId(req: Request) {
   const id = req.headers.get('x-kontena-owner');
-  if (!id) throw new Error('Silakan masuk ke Kontena terlebih dahulu.');
+  if (!id) throw new Error('Workspace tidak tersedia. Muat ulang halaman.');
   return id;
 }
 export function socialReady() {

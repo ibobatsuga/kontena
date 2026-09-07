@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 export const projects = sqliteTable('projects', {
+  ownerId: text('owner_id').notNull().default('owner'),
   id: text('id').primaryKey(),
   title: text('title').notNull(),
   payload: text('payload').notNull(),
@@ -64,4 +65,9 @@ export const loginAttempts = sqliteTable('login_attempts', {
   id: text('id').primaryKey(),
   attempts: integer('attempts').notNull(),
   expiresAt: integer('expires_at').notNull(),
+});
+
+export const assetOwners = sqliteTable('asset_owners', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
 });

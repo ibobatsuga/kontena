@@ -1,17 +1,11 @@
-import { existsSync, writeFileSync, chmodSync } from 'node:fs';
-import { randomBytes, pbkdf2Sync } from 'node:crypto';
+import { existsSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 if (!existsSync('.env')) {
-  const password = randomBytes(24).toString('base64url');
-  const salt = randomBytes(16).toString('hex');
   const secrets = {
     SESSION_SECRET: randomBytes(32).toString('base64url'),
     SOCIAL_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
     CRON_SECRET: randomBytes(32).toString('base64url'),
-    ADMIN_PASSWORD_HASH:
-      salt +
-      ':' +
-      pbkdf2Sync(password, salt, 100000, 32, 'sha256').toString('hex'),
   };
   writeFileSync(
     '.env',
@@ -20,12 +14,7 @@ if (!existsSync('.env')) {
       .join('\n') + '\n',
     { mode: 0o600 },
   );
-  writeFileSync(
-    '.local-login.txt',
-    'http://localhost:3000/login\nPassword: ' + password + '\n',
-    { mode: 0o600 },
-  );
-  console.log('Kredensial lokal dibuat. Baca .local-login.txt untuk password.');
+  console.log('Konfigurasi lokal dibuat. Dashboard dapat dibuka tanpa login.');
 }
 const result = spawnSync(
   process.execPath,
@@ -45,4 +34,4 @@ const result = spawnSync(
   },
 );
 if (result.status !== 0) process.exit(result.status || 1);
-console.log('Jalankan npm run dev dan buka http://localhost:3000/login.');
+console.log('Jalankan npm run dev dan buka http://localhost:3000.');

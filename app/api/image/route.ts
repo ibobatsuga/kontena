@@ -1,3 +1,5 @@
+import { registerAsset } from '@/lib/asset-ownership';
+import { userId } from '@/lib/social';
 import { body, fail, gateway, mutation, runtime } from '@/lib/server';
 import { ratios } from '@/lib/model';
 import { resolveVisualTheme } from '@/lib/creative-options';
@@ -37,6 +39,7 @@ export async function POST(req: Request) {
     await runtime.MEDIA.put(id, bytes, {
       httpMetadata: { contentType: result.mimeType },
     });
+    await registerAsset(id, userId(req));
     return Response.json({ image: '/api/assets/' + id });
   } catch (e) {
     return fail(e);

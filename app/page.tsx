@@ -162,11 +162,6 @@ export default function Home() {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter>
-          <form action="/auth/logout" method="post">
-            <button className="text-button" type="submit">
-              Keluar dari workspace
-            </button>
-          </form>
           <div className="studio-card">
             <Sparkles size={21} />
             <h3>Ide bagus. Konten hebat.</h3>

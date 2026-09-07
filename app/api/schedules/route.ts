@@ -1,3 +1,4 @@
+import { ownsAsset } from '@/lib/asset-ownership';
 import { db, body, fail, mutation, runtime } from '@/lib/server';
 import { userId, ownedAccount, checkAccount } from '@/lib/social';
 export async function GET(req: Request) {
@@ -5,7 +6,7 @@ export async function GET(req: Request) {
     const owner = userId(req);
     const r = await db()
       .prepare(
-        "SELECT s.id,s.project_id AS projectId,p.title,s.scheduled_at AS scheduledAt,s.platform,s.status,s.auto_post AS autoPost,s.mode,s.error,s.account_id AS accountId,s.account_name AS accountName,json_extract(s.payload,'$.caption') AS caption,json_extract(s.payload,'$.images') AS images,json_extract(s.payload,'$.ratio') AS ratio FROM schedules s JOIN projects p ON p.id=s.project_id WHERE s.owner_id=? ORDER BY s.scheduled_at ASC LIMIT 300",
+        "SELECT s.id,s.project_id AS projectId,p.title,s.scheduled_at AS scheduledAt,s.platform,s.status,s.auto_post AS autoPost,s.mode,s.error,s.account_id AS accountId,s.account_name AS accountName,json_extract(s.payload,'$.caption') AS caption,json_extract(s.payload,'$.images') AS images,json_extract(s.payload,'$.ratio') AS ratio FROM schedules s JOIN projects p ON p.id=s.project_id AND p.owner_id=s.owner_id WHERE s.owner_id=? ORDER BY s.scheduled_at ASC LIMIT 300",
       )
       .bind(owner)
       .all();
@@ -75,8 +76,8 @@ async function saveSchedule(req: Request, editing: boolean) {
         throw new Error('Layanan pengiriman gambar Instagram belum diatur.');
     }
     const row = await db()
-      .prepare('SELECT payload FROM projects WHERE id=?')
-      .bind(b.projectId)
+      .prepare('SELECT payload FROM projects WHERE id=? AND owner_id=?')
+      .bind(b.projectId, owner)
       .first<{ payload: string }>();
     if (!row) throw new Error('Simpan konten terlebih dahulu.');
     const p = JSON.parse(row.payload);
@@ -112,7 +113,10 @@ async function saveSchedule(req: Request, editing: boolean) {
       );
     let totalSize = 0;
     for (const path of images) {
-      const object = await runtime.MEDIA.head(path.split('/').pop());
+      const id = path.split('/').pop();
+      if (!(await ownsAsset(id, owner)))
+        throw new Error('Gambar jadwal tidak ditemukan.');
+      const object = await runtime.MEDIA.head(id);
       if (!object) throw new Error('Gambar jadwal tidak ditemukan.');
       totalSize += object.size;
     }

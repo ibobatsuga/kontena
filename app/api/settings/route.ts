@@ -1,9 +1,14 @@
 import { db, body, fail, mutation, runtime } from '@/lib/server';
-export async function GET() {
+import { userId } from '@/lib/social';
+function settingsKey(req: Request) {
+  const owner = userId(req);
+  return owner === 'owner' ? 'workspace' : `workspace:${owner}`;
+}
+export async function GET(req: Request) {
   try {
     const s = await db()
       .prepare('SELECT payload FROM settings WHERE id=?')
-      .bind('workspace')
+      .bind(settingsKey(req))
       .first<{ payload: string }>();
     const heartbeat = await db()
       .prepare('SELECT payload FROM settings WHERE id=?')
@@ -44,7 +49,7 @@ export async function POST(req: Request) {
       .prepare(
         'INSERT INTO settings (id,payload) VALUES (?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',
       )
-      .bind('workspace', JSON.stringify(settings))
+      .bind(settingsKey(req), JSON.stringify(settings))
       .run();
     return Response.json(settings);
   } catch (e) {

@@ -4,7 +4,7 @@ Aplikasi berjalan sebagai Cloudflare Worker `kontena` di akun `ibobatsuga`, mema
 
 ## Penggunaan
 
-Buka alamat aplikasi dan masuk memakai password workspace. Password deployment disediakan terpisah dan tidak ada dalam repository. Ini workspace pribadi dengan satu pemilik, bukan aplikasi publik multi-pengguna.
+Buka https://kontena.nalarasa.workers.dev untuk langsung masuk ke dashboard tanpa halaman login atau password. Konten, pengaturan dan koneksi akun dipisahkan per browser. Gunakan browser yang sama untuk melanjutkan workspace; menghapus cookie atau membuka browser lain membuat workspace baru. Sesi pemilik yang masih valid dari versi sebelumnya tetap membawa data lama.
 
 Menu: Dashboard, Buat Konten, Konten Saya, Template, Scheduler, Kalender, Akun Sosial, Pengaturan. Template hanya menampilkan layout, tanpa foto/logo asli referensi. Rasio konten: 4:5, 9:16 dan 1:1.
 
@@ -18,7 +18,7 @@ npm run setup:local
 npm run dev
 ```
 
-Buka http://localhost:3000/login. Untuk instalasi baru, password lokal ada di `.local-login.txt`. Data lokal dan `.env` tidak boleh diunggah ke GitHub.
+Buka http://localhost:3000 langsung tanpa login. Data lokal dan `.env` tidak boleh diunggah ke GitHub.
 
 ## Deployment
 
@@ -28,7 +28,7 @@ npm run db:migrate
 npm run deploy
 ```
 
-Akun, ID database dan namespace ada di `wrangler.jsonc`. Rahasia produksi: `SESSION_SECRET`, `ADMIN_PASSWORD_HASH`, `SOCIAL_ENCRYPTION_KEY`, `CRON_SECRET`. `ADMIN_PASSWORD_HASH` memakai format salt:hash PBKDF2-SHA256 100.000 iterasi. Rotasi SESSION_SECRET untuk mengakhiri seluruh sesi. Jangan mengganti kunci enkripsi tanpa memigrasi atau menghubungkan ulang akun sosial.
+Akun, ID database dan namespace ada di `wrangler.jsonc`. Rahasia produksi: `SESSION_SECRET`, `SOCIAL_ENCRYPTION_KEY`, `CRON_SECRET`. SESSION_SECRET menandatangani cookie workspace otomatis. Mengganti kunci ini membatalkan akses cookie workspace yang lama. Jangan mengganti kunci enkripsi tanpa memigrasi atau menghubungkan ulang akun sosial.
 
 Worker memiliki cron setiap menit; scheduler tidak bergantung pada browser terbuka. Instagram menerima tautan gambar bertanda tangan yang kedaluwarsa setelah 24 jam. KV adalah penyimpanan sementara sebelum R2 tersedia: gambar baru mungkin memerlukan waktu untuk tersebar antar wilayah. Data dari deployment Sites sebelumnya tidak otomatis dipindahkan.
 

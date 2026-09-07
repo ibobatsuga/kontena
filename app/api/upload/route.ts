@@ -1,3 +1,5 @@
+import { registerAsset } from '@/lib/asset-ownership';
+import { userId } from '@/lib/social';
 import { fail, mutation, runtime } from '@/lib/server';
 export async function POST(req: Request) {
   try {
@@ -23,6 +25,7 @@ export async function POST(req: Request) {
         contentType: png ? 'image/png' : jpg ? 'image/jpeg' : 'image/webp',
       },
     });
+    await registerAsset(id, userId(req));
     return Response.json({ image: '/api/assets/' + id });
   } catch (e) {
     return fail(e);
