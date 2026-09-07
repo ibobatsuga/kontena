@@ -44,7 +44,12 @@ export default {
           'Referrer-Policy': 'no-referrer',
         },
       });
-    if (path.startsWith('/assets/') || path === '/favicon.svg')
+    if (
+      path.startsWith('/assets/') ||
+      path.startsWith('/_next/static/') ||
+      path === '/vinext-client-entry-manifest.json' ||
+      path === '/favicon.svg'
+    )
       return env.ASSETS.fetch(req);
     if (!(await authenticated(req, env))) {
       if (path.startsWith('/api/'))
