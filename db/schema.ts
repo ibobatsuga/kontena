@@ -59,3 +59,9 @@ export const socialConfig = sqliteTable('social_config', {
   appId: text('app_id').notNull(),
   secret: text('secret').notNull(),
 });
+
+export const loginAttempts = sqliteTable('login_attempts', {
+  id: text('id').primaryKey(),
+  attempts: integer('attempts').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+});

@@ -1,17 +1,51 @@
 import { env } from 'cloudflare:workers';
-export const runtime = env as unknown as {
+const bindings = env as unknown as {
   DB: D1Database;
-  MEDIA: R2Bucket;
+  SESSION_SECRET?: string;
+  ADMIN_PASSWORD_HASH?: string;
+  MEDIA?: R2Bucket;
+  MEDIA_KV?: KVNamespace;
   AI_GATEWAY_URL?: string;
   AI_GATEWAY_KEY?: string;
   AI_TEXT_MODEL?: string;
   AI_IMAGE_MODEL?: string;
   SOCIAL_ENCRYPTION_KEY?: string;
   META_GRAPH_VERSION?: string;
-  MEDIA_STAGING_URL?: string;
-  MEDIA_STAGING_KEY?: string;
   CRON_SECRET?: string;
   SCHEDULER_ENABLED?: string;
+};
+// Immutable image objects can use KV until R2 is enabled on the owner's account.
+function kvMedia(kv: KVNamespace) {
+  async function read(id: string) {
+    const item = await kv.getWithMetadata<{
+      contentType: string;
+      size: number;
+    }>(id, { type: 'arrayBuffer' });
+    if (!item.value) return null;
+    return {
+      body: item.value,
+      arrayBuffer: async () => item.value!,
+      size: item.metadata?.size || item.value.byteLength,
+      httpMetadata: {
+        contentType: item.metadata?.contentType || 'application/octet-stream',
+      },
+    };
+  }
+  return {
+    get: read,
+    head: read,
+    put: async (id: string, value: ArrayBuffer | Uint8Array, options: any) => {
+      const size = value.byteLength;
+      await kv.put(id, value, {
+        metadata: { contentType: options.httpMetadata.contentType, size },
+      });
+    },
+  };
+}
+export const runtime = {
+  ...bindings,
+  MEDIA: (bindings.MEDIA ||
+    (bindings.MEDIA_KV ? kvMedia(bindings.MEDIA_KV) : undefined)) as R2Bucket,
 };
 export function db() {
   if (!runtime.DB) throw new Error('Database tidak tersedia.');

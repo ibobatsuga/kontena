@@ -1,14 +1,31 @@
-import { existsSync, readFileSync, appendFileSync, chmodSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
+import { existsSync, writeFileSync, chmodSync } from 'node:fs';
+import { randomBytes, pbkdf2Sync } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-const env = existsSync('.env') ? readFileSync('.env', 'utf8') : '';
-if (!/^SOCIAL_ENCRYPTION_KEY=.+$/m.test(env)) {
-  appendFileSync(
+if (!existsSync('.env')) {
+  const password = randomBytes(24).toString('base64url');
+  const salt = randomBytes(16).toString('hex');
+  const secrets = {
+    SESSION_SECRET: randomBytes(32).toString('base64url'),
+    SOCIAL_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+    CRON_SECRET: randomBytes(32).toString('base64url'),
+    ADMIN_PASSWORD_HASH:
+      salt +
+      ':' +
+      pbkdf2Sync(password, salt, 100000, 32, 'sha256').toString('hex'),
+  };
+  writeFileSync(
     '.env',
-    '\nSOCIAL_ENCRYPTION_KEY=' + randomBytes(32).toString('base64') + '\n',
+    Object.entries(secrets)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n') + '\n',
+    { mode: 0o600 },
   );
-  chmodSync('.env', 0o600);
-  console.log('Kunci enkripsi lokal dibuat di .env.');
+  writeFileSync(
+    '.local-login.txt',
+    'http://localhost:3000/login\nPassword: ' + password + '\n',
+    { mode: 0o600 },
+  );
+  console.log('Kredensial lokal dibuat. Baca .local-login.txt untuk password.');
 }
 const result = spawnSync(
   process.execPath,
@@ -17,10 +34,10 @@ const result = spawnSync(
     'd1',
     'migrations',
     'apply',
-    'site-creator-d1',
+    'DB',
     '--local',
     '--config',
-    'wrangler.local.jsonc',
+    'wrangler.jsonc',
   ],
   {
     stdio: 'inherit',
@@ -28,6 +45,4 @@ const result = spawnSync(
   },
 );
 if (result.status !== 0) process.exit(result.status || 1);
-console.log(
-  'Database siap. Jalankan npm run dev, lalu buka http://localhost:3000/signin-with-chatgpt?return_to=/',
-);
+console.log('Jalankan npm run dev dan buka http://localhost:3000/login.');

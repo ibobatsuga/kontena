@@ -15,6 +15,13 @@
       "when": 1788754688806,
       "tag": "0001_normal_genesis",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788758451068,
+      "tag": "0002_magical_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

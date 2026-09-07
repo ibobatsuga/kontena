@@ -71,10 +71,7 @@ async function saveSchedule(req: Request, editing: boolean) {
       );
     if (b.mode === 'live' && account) {
       await checkAccount(account);
-      if (
-        account.platform === 'Instagram' &&
-        (!runtime.MEDIA_STAGING_URL || !runtime.MEDIA_STAGING_KEY)
-      )
+      if (account.platform === 'Instagram' && !runtime.SESSION_SECRET)
         throw new Error('Layanan pengiriman gambar Instagram belum diatur.');
     }
     const row = await db()

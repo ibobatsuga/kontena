@@ -59,6 +59,7 @@ await assert.rejects(() => social.unseal(sealed, 'bob'));
 assert.notEqual(await social.seal('test-token', 'alice'), sealed);
 console.log('PASS encryption round trip, randomized IV and owner binding');
 runtime.MEDIA = {
+  head: async () => ({ httpMetadata: { contentType: 'image/jpeg' } }),
   get: async () => ({
     httpMetadata: { contentType: 'image/jpeg' },
     arrayBuffer: async () => new Uint8Array([255, 216, 255, 217]).buffer,
@@ -97,6 +98,9 @@ const fakeFetch = async (url, options) => {
 const publisher = moduleAt(
   'lib/publisher.ts',
   {
+    './media-links': {
+      mediaLink: async (id) => 'https://cdn.example/' + id + '.jpg',
+    },
     './server': {
       runtime,
       db: () => database,

@@ -40,3 +40,8 @@ next-env.d.ts
 !.env.example
 
 *.tsbuildinfo
+
+.dev.vars*
+.secrets*
+
+.local-login.txt

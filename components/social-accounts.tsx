@@ -507,7 +507,7 @@ export function PublishingScheduler({
               <h3>2. Aktifkan runner scheduler</h3>
               <p>
                 {settings.schedulerReady
-                  ? 'Runner dikonfigurasi untuk memproses jadwal.'
+                  ? 'Cloudflare menjalankan pemeriksaan jadwal setiap menit.'
                   : 'Pengelola perlu menghubungkan runner agar jadwal berjalan saat browser ditutup.'}
               </p>
             </div>
@@ -520,7 +520,7 @@ export function PublishingScheduler({
               <h3>3. Pengiriman gambar Instagram</h3>
               <p>
                 {settings.instagramMediaReady
-                  ? 'Layanan URL gambar telah dikonfigurasi.'
+                  ? 'URL gambar sementara dikelola langsung oleh Cloudflare.'
                   : 'Layanan URL gambar publik sementara diperlukan untuk Instagram. Facebook memakai upload langsung.'}
               </p>
             </div>

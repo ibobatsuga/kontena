@@ -1,3 +1,4 @@
+import { mediaLink } from './media-links';
 import { runtime, https, db } from './server';
 import { Account, checkAccount, graph, version } from './social';
 // Containers/photo uploads never publish until the final feed/media_publish call.
@@ -58,40 +59,15 @@ export async function publishJob(
     if (!result.id) throw new Error('Publikasi belum terkonfirmasi.');
     return { publishedId: result.id };
   }
-  if (!runtime.MEDIA_STAGING_URL || !runtime.MEDIA_STAGING_KEY)
-    throw new Error('Pengiriman gambar Instagram belum diatur.');
   if (!progress.urls) {
-    const images = [];
+    progress.urls = [];
     for (const path of payload.images) {
-      const obj = await runtime.MEDIA.get(path.split('/').pop());
+      const id = path.split('/').pop();
+      const obj = await runtime.MEDIA.head(id);
       if (!obj || obj.httpMetadata?.contentType !== 'image/jpeg')
-        throw new Error(
-          'Instagram memerlukan gambar JPEG. Jadwalkan ulang untuk merender format JPEG.',
-        );
-      const bytes = new Uint8Array(await obj.arrayBuffer());
-      let binary = '';
-      for (let i = 0; i < bytes.length; i += 8192)
-        binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
-      images.push({ mimeType: 'image/jpeg', base64: btoa(binary) });
+        throw new Error('Instagram memerlukan gambar JPEG.');
+      progress.urls.push(await mediaLink(id, payload.origin));
     }
-    const r = await fetch(https(runtime.MEDIA_STAGING_URL), {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${runtime.MEDIA_STAGING_KEY}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': jobId,
-      },
-      body: JSON.stringify({ id: jobId, images, expiresInSeconds: 86400 }),
-      signal: AbortSignal.timeout(60000),
-    });
-    const result: any = await r.json();
-    if (
-      !r.ok ||
-      !Array.isArray(result.urls) ||
-      result.urls.length !== images.length
-    )
-      throw new Error('Penyiapan URL gambar gagal.');
-    progress.urls = result.urls.map(https);
     await remember();
   }
   for (let i = progress.items.length; i < progress.urls.length; i++) {

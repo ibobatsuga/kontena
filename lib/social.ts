@@ -1,6 +1,6 @@
 import { db, runtime } from './server';
 export function userId(req: Request) {
-  const id = req.headers.get('oai-authenticated-user-id');
+  const id = req.headers.get('x-kontena-owner');
   if (!id) throw new Error('Silakan masuk ke Kontena terlebih dahulu.');
   return id;
 }

@@ -5,15 +5,18 @@ export async function GET() {
       .prepare('SELECT payload FROM settings WHERE id=?')
       .bind('workspace')
       .first<{ payload: string }>();
+    const heartbeat = await db()
+      .prepare('SELECT payload FROM settings WHERE id=?')
+      .bind('scheduler:last-run')
+      .first<{ payload: string }>();
     return Response.json({
+      lastSchedulerRun: heartbeat ? JSON.parse(heartbeat.payload) : null,
       ...(s
         ? JSON.parse(s.payload)
         : { brand: 'Kontena', handle: '@kontena', autoPost: false }),
       aiReady: !!(runtime.AI_GATEWAY_URL && runtime.AI_GATEWAY_KEY),
       publisherReady: !!runtime.SOCIAL_ENCRYPTION_KEY,
-      instagramMediaReady: !!(
-        runtime.MEDIA_STAGING_URL && runtime.MEDIA_STAGING_KEY
-      ),
+      instagramMediaReady: !!runtime.SESSION_SECRET,
       schedulerReady:
         runtime.SCHEDULER_ENABLED === 'true' && !!runtime.CRON_SECRET,
     });

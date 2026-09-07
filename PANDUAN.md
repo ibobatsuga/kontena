@@ -1,12 +1,16 @@
-# Kontena — Panduan menjalankan aplikasi
+# Kontena di Cloudflare milik sendiri
 
-Aplikasi desktop-first responsif untuk membuat konten sosial media, dengan studio AI, tujuh preset layout, pustaka konten, Scheduler, Kalender, dan koneksi akun sosial.
+Aplikasi berjalan sebagai Cloudflare Worker `kontena` di akun `ibobatsuga`, memakai D1 `kontena-db` dan KV untuk gambar. R2 dapat diaktifkan dan ditambahkan melalui binding `MEDIA` setelah tersedia.
 
-## Mulai di komputer sendiri
+## Penggunaan
 
-1. Pasang Node.js versi 22.13 atau lebih baru.
-2. Ekstrak ZIP, lalu buka Terminal di folder `kontena`.
-3. Jalankan:
+Buka alamat aplikasi dan masuk memakai password workspace. Password deployment disediakan terpisah dan tidak ada dalam repository. Ini workspace pribadi dengan satu pemilik, bukan aplikasi publik multi-pengguna.
+
+Menu: Dashboard, Buat Konten, Konten Saya, Template, Scheduler, Kalender, Akun Sosial, Pengaturan. Template hanya menampilkan layout, tanpa foto/logo asli referensi. Rasio konten: 4:5, 9:16 dan 1:1.
+
+Scheduler dan auto post digabung. Kalender menampilkan Scheduled, Success dan Failed serta memungkinkan edit waktu, akun, caption dan gambar. Jadwal yang sedang diproses atau sudah terbit dikunci. Perubahan di editor tidak mengubah postingan yang sudah terbit di platform.
+
+## Instalasi lokal
 
 ```sh
 npm ci
@@ -14,30 +18,25 @@ npm run setup:local
 npm run dev
 ```
 
-4. Buka **http://localhost:3000/signin-with-chatgpt?return_to=/**. Pada komputer lokal, tautan ini memakai identitas pengembangan bawaan, bukan login ke akun sosial.
+Buka http://localhost:3000/login. Untuk instalasi baru, password lokal ada di `.local-login.txt`. Data lokal dan `.env` tidak boleh diunggah ke GitHub.
 
-`setup:local` membuat database lokal dari migrasi dan kunci enkripsi lokal di `.env`. Simpan `.env` dengan aman. Jangan memasukkannya ke Git atau mengirimkannya kepada orang lain. Data aplikasi lokal tersimpan di `.wrangler/`; data dari website yang sudah dipublikasikan tidak ikut dalam ZIP.
+## Deployment
 
-## Fitur yang tersedia
+```sh
+npx wrangler login
+npm run db:migrate
+npm run deploy
+```
 
-- Studio konten dengan rasio **4:5, 9:16, dan 1:1**, pengaturan slide/carousel, topik, niche, visual, font, overlay, caption dan CTA.
-- Edit teks serta prompt gambar, unggah gambar, simpan konten, unduh PNG dan ZIP slide.
-- Tujuh preset berupa **layout saja**, tanpa foto atau logo asli dari referensi.
-- **Scheduler:** jadwal baru, kesiapan publikasi otomatis, dan aktivitas auto post.
-- **Kalender:** filter Scheduled, Success, Failed, Diproses, Dibatalkan; edit waktu, akun, caption, serta perbarui gambar dari konten terbaru. Jadwal yang sudah berhasil terbit atau sedang diproses bersifat hanya baca.
-- **Akun Sosial:** login Meta untuk menghubungkan Facebook Page dan Instagram Business/Creator yang terhubung ke Page, memeriksa koneksi, dan memutus akun.
+Akun, ID database dan namespace ada di `wrangler.jsonc`. Rahasia produksi: `SESSION_SECRET`, `ADMIN_PASSWORD_HASH`, `SOCIAL_ENCRYPTION_KEY`, `CRON_SECRET`. `ADMIN_PASSWORD_HASH` memakai format salt:hash PBKDF2-SHA256 100.000 iterasi. Rotasi SESSION_SECRET untuk mengakhiri seluruh sesi. Jangan mengganti kunci enkripsi tanpa memigrasi atau menghubungkan ulang akun sosial.
 
-## Aktivasi layanan nyata
+Worker memiliki cron setiap menit; scheduler tidak bergantung pada browser terbuka. Instagram menerima tautan gambar bertanda tangan yang kedaluwarsa setelah 24 jam. KV adalah penyimpanan sementara sebelum R2 tersedia: gambar baru mungkin memerlukan waktu untuk tersebar antar wilayah. Data dari deployment Sites sebelumnya tidak otomatis dipindahkan.
 
-**AI:** model belum ditentukan. Mode demo menggunakan contoh tetap yang diberi label demo. Untuk generasi berdasarkan prompt, hubungkan adapter backend melalui `AI_GATEWAY_URL` dan `AI_GATEWAY_KEY`. Kontrak request/response ada di `README.md`.
+## Layanan yang masih perlu dihubungkan
 
-**Akun sosial:** buat dan konfigurasi Meta App, lalu masukkan App ID dan App Secret lewat **Akun Sosial → Pengaturan integrasi**. Daftarkan OAuth Redirect URI yang ditampilkan. Lengkapi izin dan App Review sesuai kebutuhan aplikasi. Login akun serta persetujuan izin dilakukan sendiri oleh pengguna. Kredensial akun nyata tidak disertakan.
-
-**Auto post:** perlu runner backend yang memanggil `/api/dispatch`, `CRON_SECRET`, dan `SCHEDULER_ENABLED=true`. Instagram juga memerlukan layanan gambar publik sementara (`MEDIA_STAGING_URL` dan `MEDIA_STAGING_KEY`) agar Meta bisa mengakses gambar dari aplikasi privat. Lihat kontrak lengkap di README. Runner dan layanan staging belum disediakan/diaktifkan. Mode live dibatasi sampai prasyarat tersedia; jadwal demo tidak mengirim postingan.
-
-Untuk Instagram, integrasi ini mendukung feed/carousel 4:5 atau 1:1, maksimal 10 slide, dan caption 2.200 karakter. Auto post Story 9:16 belum tersedia. Facebook personal dan Instagram personal tidak didukung.
-
-## Verifikasi dan build
+- AI: isi AI_GATEWAY_URL dan AI_GATEWAY_KEY, lalu pilih model melalui adapter backend. Tanpa ini, demo tetap menggunakan contoh tetap.
+- Meta: Akun Sosial → Pengaturan integrasi. Isi App ID/Secret dan tambahkan redirect URI yang ditampilkan ke Meta App. Izin serta App Review disesuaikan dengan pemakaian. Hubungkan akun melalui login resmi Meta.
+- Instagram Business/Creator harus terhubung dengan Facebook Page. Integrasi mendukung feed/carousel 4:5 atau 1:1, maksimal 10 slide; auto post Story 9:16 belum tersedia.
 
 ```sh
 npm test
@@ -45,17 +44,4 @@ npx tsc --noEmit
 npm run build
 ```
 
-Uji publisher memakai respons Meta tiruan dan tidak mengirim postingan. Alur akun nyata belum diuji tanpa Meta App/akun yang dikonfigurasi.
-
-## Hosting dan struktur
-
-Frontend React/TypeScript berjalan di Vinext; backend memakai Cloudflare Worker, D1, dan R2. Proyek ini bukan HTML statis dan tidak dapat dijalankan dengan sekadar membuka file HTML. Konfigurasi `.openai/hosting.json` menunjuk ke Site Kontena yang dibuat dalam sesi ini. Jangan mengubah akses Site menjadi publik atau membagikannya sebagai aplikasi multi-pengguna sebelum melengkapi isolasi data proyek, aset, dan pengaturan. Untuk memindahkan ke hosting lain, developer perlu menyesuaikan binding serta autentikasi backend.
-
-- `app/`: halaman dan API backend.
-- `components/`: studio, kalender, akun sosial, dan UI.
-- `lib/`: renderer, model, enkripsi, dan publisher.
-- `db/` dan `drizzle/`: skema serta migrasi database.
-- `public/`: aset aplikasi.
-- `.env.example`: daftar konfigurasi tanpa nilai rahasia.
-
-ZIP berisi source code, lockfile, aset, migrasi, tes, dan panduan. Tidak memuat `node_modules`, `.env`, token akun, database pengguna, cache, atau riwayat Git.
+Tes publisher memakai respons tiruan dan tidak mengirim postingan ke akun nyata.
