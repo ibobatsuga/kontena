@@ -8,6 +8,13 @@
       "when": 1788752888857,
       "tag": "0000_old_kid_colt",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788754688806,
+      "tag": "0001_normal_genesis",
+      "breakpoints": true
     }
   ]
 }

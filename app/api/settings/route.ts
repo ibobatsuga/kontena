@@ -10,8 +10,9 @@ export async function GET() {
         ? JSON.parse(s.payload)
         : { brand: 'Kontena', handle: '@kontena', autoPost: false }),
       aiReady: !!(runtime.AI_GATEWAY_URL && runtime.AI_GATEWAY_KEY),
-      publisherReady: !!(
-        runtime.PUBLISH_GATEWAY_URL && runtime.PUBLISH_GATEWAY_KEY
+      publisherReady: !!runtime.SOCIAL_ENCRYPTION_KEY,
+      instagramMediaReady: !!(
+        runtime.MEDIA_STAGING_URL && runtime.MEDIA_STAGING_KEY
       ),
       schedulerReady:
         runtime.SCHEDULER_ENABLED === 'true' && !!runtime.CRON_SECRET,

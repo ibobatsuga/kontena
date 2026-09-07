@@ -6,8 +6,10 @@ export const runtime = env as unknown as {
   AI_GATEWAY_KEY?: string;
   AI_TEXT_MODEL?: string;
   AI_IMAGE_MODEL?: string;
-  PUBLISH_GATEWAY_URL?: string;
-  PUBLISH_GATEWAY_KEY?: string;
+  SOCIAL_ENCRYPTION_KEY?: string;
+  META_GRAPH_VERSION?: string;
+  MEDIA_STAGING_URL?: string;
+  MEDIA_STAGING_KEY?: string;
   CRON_SECRET?: string;
   SCHEDULER_ENABLED?: string;
 };

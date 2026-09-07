@@ -212,11 +212,11 @@ export function ContentLibrary({
   );
 }
 const statusNames: Record<string, string> = {
-  scheduled: 'Terjadwal',
-  published: 'Terpublikasi',
+  scheduled: 'Scheduled',
+  published: 'Success',
   cancelled: 'Dibatalkan',
   processing: 'Diproses',
-  needs_attention: 'Perlu diperiksa',
+  needs_attention: 'Failed · Perlu diperiksa',
 };
 function dateKey(date: Date) {
   return new Intl.DateTimeFormat('en-CA', {
@@ -229,8 +229,12 @@ function dateKey(date: Date) {
 export function Scheduler({
   schedules,
   onNew,
+  onEdit,
+  onOpenContent,
   onRefresh,
 }: {
+  onEdit: (schedule: Schedule) => void;
+  onOpenContent: (schedule: Schedule) => void;
   schedules: Schedule[];
   onNew: () => void;
   onRefresh: () => void;
@@ -240,6 +244,7 @@ export function Scheduler({
     return new Date(n.getFullYear(), n.getMonth(), 1);
   });
   const [selected, setSelected] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const offset = (month.getDay() + 6) % 7;
@@ -247,7 +252,7 @@ export function Scheduler({
   const today = dateKey(new Date());
   const rows = schedules.filter(
     (s) =>
-      s.status !== 'cancelled' &&
+      (statusFilter === 'all' || s.status === statusFilter) &&
       (!selected || dateKey(new Date(s.scheduledAt)) === selected),
   );
   async function cancel(id: string) {
@@ -278,6 +283,32 @@ export function Scheduler({
           <Plus size={16} />
           Jadwal Baru
         </button>
+      </div>
+      <div className="calendar-filters" aria-label="Filter status jadwal">
+        {[
+          ['all', 'Semua'],
+          ['scheduled', 'Scheduled'],
+          ['published', 'Success'],
+          ['needs_attention', 'Failed'],
+          ['processing', 'Diproses'],
+          ['cancelled', 'Dibatalkan'],
+        ].map(([value, label]) => (
+          <button
+            key={value}
+            className={statusFilter === value ? 'active' : ''}
+            aria-pressed={statusFilter === value}
+            onClick={() => setStatusFilter(value)}
+          >
+            <i className={'status-dot ' + value} />
+            {label}
+            <span>
+              {
+                schedules.filter((s) => value === 'all' || s.status === value)
+                  .length
+              }
+            </span>
+          </button>
+        ))}
       </div>
       <div className="scheduler-layout">
         <section className="calendar-card">
@@ -343,7 +374,7 @@ export function Scheduler({
                 const events = schedules.filter(
                   (s) =>
                     dateKey(new Date(s.scheduledAt)) === key &&
-                    s.status !== 'cancelled',
+                    (statusFilter === 'all' || s.status === statusFilter),
                 );
                 return (
                   <button
@@ -355,10 +386,8 @@ export function Scheduler({
                     <span>{valid ? d : ''}</span>
                     <div>
                       {events.slice(0, 2).map((s) => (
-                        <small
-                          key={s.id}
-                          className={s.mode === 'demo' ? 'demo-event' : ''}
-                        >
+                        <small key={s.id} className={'event-' + s.status}>
+                          {s.mode === 'demo' ? 'Demo · ' : ''}
                           {s.title}
                         </small>
                       ))}
@@ -373,12 +402,16 @@ export function Scheduler({
           </div>
           <div className="calendar-legend">
             <span>
-              <i />
-              Terjadwal
+              <i className="status-dot scheduled" />
+              Scheduled
             </span>
             <span>
-              <i className="demo" />
-              Jadwal demo
+              <i className="status-dot published" />
+              Success
+            </span>
+            <span>
+              <i className="status-dot needs_attention" />
+              Failed
             </span>
           </div>
         </section>
@@ -413,7 +446,11 @@ export function Scheduler({
                   <span
                     className={
                       'badge ' +
-                      (s.status === 'published' ? 'green' : 'neutral')
+                      (s.status === 'published'
+                        ? 'green'
+                        : s.status === 'needs_attention'
+                          ? 'red'
+                          : 'neutral')
                     }
                   >
                     {s.mode === 'demo' ? 'Demo · ' : ''}
@@ -421,6 +458,7 @@ export function Scheduler({
                   </span>
                 </div>
                 <h3>{s.title}</h3>
+                {s.accountName && <small>Akun: {s.accountName}</small>}
                 <p>
                   <Clock3 size={13} />
                   {new Date(s.scheduledAt).toLocaleString('id-ID', {
@@ -439,7 +477,23 @@ export function Scheduler({
                   <small>Pengingat manual. Auto post dimatikan.</small>
                 )}
                 {s.error && <small className="error-text">{s.error}</small>}
-                {s.status === 'scheduled' && (
+                <div className="schedule-actions">
+                  <button
+                    className="secondary compact"
+                    onClick={() => onEdit(s)}
+                  >
+                    {s.status === 'scheduled' || s.status === 'needs_attention'
+                      ? 'Edit jadwal'
+                      : 'Lihat detail'}
+                  </button>
+                  <button
+                    className="text-button"
+                    onClick={() => onOpenContent(s)}
+                  >
+                    Buka konten <ArrowUpRight size={13} />
+                  </button>
+                </div>
+                {['scheduled', 'needs_attention'].includes(s.status) && (
                   <button
                     className="text-button"
                     disabled={busy === s.id}
@@ -486,18 +540,50 @@ export function ScheduleDialog({
   onClose,
   onSaved,
   settings,
+  accounts,
+  onConnect,
+  schedule,
 }: {
+  schedule?: Schedule | null;
+  accounts: import('@/lib/model').SocialAccount[];
+  onConnect: () => void;
   project: Project | null | undefined;
   projects: Project[];
   onClose: () => void;
   onSaved: () => void;
   settings: any;
 }) {
-  const [projectId, setProjectId] = useState(project?.id || '');
-  const [date, setDate] = useState('');
-  const [platform, setPlatform] = useState('Instagram');
-  const [mode, setMode] = useState('Demo');
-  const [auto, setAuto] = useState(!!settings.autoPost);
+  const [projectId, setProjectId] = useState(
+    schedule?.projectId || project?.id || '',
+  );
+  const [date, setDate] = useState(
+    schedule
+      ? new Date(new Date(schedule.scheduledAt).getTime() + 7 * 3600000)
+          .toISOString()
+          .slice(0, 16)
+      : '',
+  );
+  const [platform, setPlatform] = useState(schedule?.platform || 'Instagram');
+  const [accountId, setAccountId] = useState(schedule?.accountId || '');
+  const availableAccounts = accounts.filter(
+    (a) => a.platform === platform && a.status === 'connected',
+  );
+  const targetAccount = availableAccounts.find((a) => a.id === accountId);
+  const liveReady =
+    !!targetAccount &&
+    settings.schedulerReady &&
+    (platform === 'Facebook' || settings.instagramMediaReady);
+  const [mode, setMode] = useState(schedule?.mode === 'live' ? 'Live' : 'Demo');
+  const [auto, setAuto] = useState(
+    schedule ? !!schedule.autoPost : !!settings.autoPost,
+  );
+  const [caption, setCaption] = useState(
+    schedule?.caption ?? project?.caption ?? '',
+  );
+  const [replaceImages, setReplaceImages] = useState(false);
+  const [confirmedRetry, setConfirmedRetry] = useState(false);
+  const readOnly =
+    !!schedule && !['scheduled', 'needs_attention'].includes(schedule.status);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const chosen = project || projects.find((p) => p.id === projectId);
@@ -511,29 +597,48 @@ export function ScheduleDialog({
       setError('Pilih waktu minimal 1 menit dari sekarang.');
       return;
     }
+    if (readOnly) return;
+    if (schedule?.status === 'needs_attention' && !confirmedRetry) {
+      setError(
+        'Periksa terlebih dahulu bahwa konten belum terpublikasi di platform.',
+      );
+      return;
+    }
+    if (mode === 'Live' && !liveReady) {
+      setError('Hubungkan akun tujuan dan lengkapi kesiapan auto post.');
+      return;
+    }
     setBusy('Menyiapkan gambar…');
     try {
-      const images = [];
-      for (let i = 0; i < chosen.slides.length; i++) {
-        setBusy(`Menyiapkan slide ${i + 1}/${chosen.slides.length}…`);
-        const blob = await renderBlob(
-          chosen.slides[i],
-          chosen.brief,
-          chosen.design,
-          i,
-          chosen.slides.length,
-        );
-        const form = new FormData();
-        form.append('file', blob, `slide-${i + 1}.png`);
-        const result = await api('upload', { method: 'POST', body: form });
-        images.push(result.image);
-      }
+      const images: string[] =
+        schedule && !replaceImages ? [...schedule.images] : [];
+      if (!schedule || replaceImages)
+        for (let i = 0; i < chosen.slides.length; i++) {
+          setBusy(`Menyiapkan slide ${i + 1}/${chosen.slides.length}…`);
+          const blob = await renderBlob(
+            chosen.slides[i],
+            chosen.brief,
+            chosen.design,
+            i,
+            chosen.slides.length,
+            'image/jpeg',
+          );
+          const form = new FormData();
+          form.append('file', blob, `slide-${i + 1}.jpg`);
+          const result = await api('upload', { method: 'POST', body: form });
+          images.push(result.image);
+        }
       await api('schedules', {
-        method: 'POST',
+        method: schedule ? 'PATCH' : 'POST',
         body: JSON.stringify({
+          id: schedule?.id,
+          confirmedRetry,
+          caption: caption || (!schedule ? chosen.caption : ''),
+          replaceImages,
           projectId: chosen.id,
           scheduledAt: new Date(date + ':00+07:00').toISOString(),
           platform,
+          accountId: targetAccount?.id || null,
           mode: mode === 'Demo' ? 'demo' : 'live',
           autoPost: auto,
           images,
@@ -554,104 +659,213 @@ export function ScheduleDialog({
     >
       <DialogContent className="schedule-dialog">
         <DialogHeader>
-          <DialogTitle>Jadwalkan konten</DialogTitle>
+          <DialogTitle>
+            {readOnly
+              ? 'Detail publikasi'
+              : schedule
+                ? 'Edit jadwal'
+                : 'Jadwalkan konten'}
+          </DialogTitle>
           <DialogDescription>
-            Pilih kapan ceritamu akan dibagikan.
+            {readOnly
+              ? 'Riwayat publikasi dan salinan konten yang dijadwalkan.'
+              : 'Atur waktu, akun tujuan, dan caption konten.'}
           </DialogDescription>
         </DialogHeader>
-        {project ? (
-          <div className="chosen-project">
-            <Layers size={18} />
-            <div>
-              <strong>{project.title}</strong>
-              <small>
-                {project.slides.length} slide · {project.brief.ratio}
-              </small>
+        <fieldset className="schedule-fields" disabled={readOnly || !!busy}>
+          {project ? (
+            <div className="chosen-project">
+              <Layers size={18} />
+              <div>
+                <strong>{project.title}</strong>
+                <small>
+                  {project.slides.length} slide · {project.brief.ratio}
+                </small>
+              </div>
             </div>
-          </div>
-        ) : (
+          ) : (
+            <div className="field">
+              <label>Konten tersimpan</label>
+              <Choice
+                label="Pilih konten"
+                value={
+                  chosen ? `${chosen.title} · ${chosen.id.slice(0, 6)}` : ''
+                }
+                options={projects.map(
+                  (p) => `${p.title} · ${p.id.slice(0, 6)}`,
+                )}
+                onChange={(v) =>
+                  setProjectId(
+                    projects.find(
+                      (p) => `${p.title} · ${p.id.slice(0, 6)}` === v,
+                    )!.id,
+                  )
+                }
+              />
+              {!projects.length && (
+                <small>Simpan konten di studio sebelum membuat jadwal.</small>
+              )}
+            </div>
+          )}
+          {schedule && (
+            <div className="schedule-snapshot">
+              {schedule.images.map((src, i) => (
+                <img key={src} src={src} alt={'Slide terjadwal ' + (i + 1)} />
+              ))}
+            </div>
+          )}
           <div className="field">
-            <label>Konten tersimpan</label>
-            <Choice
-              label="Pilih konten"
-              value={chosen ? `${chosen.title} · ${chosen.id.slice(0, 6)}` : ''}
-              options={projects.map((p) => `${p.title} · ${p.id.slice(0, 6)}`)}
-              onChange={(v) =>
-                setProjectId(
-                  projects.find(
-                    (p) => `${p.title} · ${p.id.slice(0, 6)}` === v,
-                  )!.id,
-                )
-              }
+            <label htmlFor="schedule-caption">Caption publikasi</label>
+            <textarea
+              id="schedule-caption"
+              rows={4}
+              maxLength={10000}
+              value={caption}
+              placeholder={chosen?.caption || 'Tulis caption…'}
+              onChange={(e) => setCaption(e.target.value)}
             />
-            {!projects.length && (
-              <small>Simpan konten di studio sebelum membuat jadwal.</small>
+          </div>
+          {schedule && !readOnly && (
+            <label className="switch-row">
+              <div>
+                Perbarui gambar dari konten terbaru
+                <small>
+                  Aktifkan setelah mengedit dan menyimpan konten di studio.
+                </small>
+              </div>
+              <Switch
+                checked={replaceImages}
+                onCheckedChange={setReplaceImages}
+              />
+            </label>
+          )}
+          <div className="field">
+            <label htmlFor="schedule-date">Tanggal & waktu · WIB</label>
+            <input
+              id="schedule-date"
+              type="datetime-local"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div className="two-fields">
+            <Choice
+              label="Platform"
+              value={platform}
+              options={['Instagram', 'Facebook']}
+              onChange={(v) => {
+                setPlatform(v);
+                setAccountId('');
+                setMode('Demo');
+              }}
+            />
+            <Choice
+              label="Mode jadwal"
+              value={mode}
+              options={liveReady ? ['Demo', 'Live'] : ['Demo']}
+              onChange={setMode}
+            />
+          </div>
+          <div className="field">
+            <label>Akun tujuan</label>
+            {availableAccounts.length ? (
+              <Choice
+                label="Pilih akun terhubung"
+                value={
+                  targetAccount
+                    ? `${targetAccount.name}${targetAccount.username ? ' · @' + targetAccount.username : ''}`
+                    : ''
+                }
+                options={availableAccounts.map(
+                  (a) => `${a.name}${a.username ? ' · @' + a.username : ''}`,
+                )}
+                onChange={(v) =>
+                  setAccountId(
+                    availableAccounts.find(
+                      (a) =>
+                        `${a.name}${a.username ? ' · @' + a.username : ''}` ===
+                        v,
+                    )!.id,
+                  )
+                }
+              />
+            ) : (
+              <div className="info-note">
+                Belum ada akun {platform} terhubung.
+              </div>
+            )}
+            <button className="text-button" onClick={onConnect}>
+              <Link2 size={14} />
+              Hubungkan / kelola akun
+            </button>
+            {targetAccount && !liveReady && (
+              <small>
+                Akun terpilih. Konfigurasi auto post masih perlu dilengkapi di
+                menu Scheduler.
+              </small>
             )}
           </div>
-        )}
-        <div className="field">
-          <label htmlFor="schedule-date">Tanggal & waktu · WIB</label>
-          <input
-            id="schedule-date"
-            type="datetime-local"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-        <div className="two-fields">
-          <Choice
-            label="Platform"
-            value={platform}
-            options={['Instagram', 'Facebook']}
-            onChange={setPlatform}
-          />
-          <Choice
-            label="Mode jadwal"
-            value={mode}
-            options={
-              settings.publisherReady && settings.schedulerReady
-                ? ['Demo', 'Live']
-                : ['Demo']
-            }
-            onChange={setMode}
-          />
-        </div>
-        <label className="switch-row">
-          <div>
-            Auto post
-            <small>
+          <label className="switch-row">
+            <div>
+              Auto post
+              <small>
+                {mode === 'Demo'
+                  ? 'Preferensi demo. Tidak mengirim postingan.'
+                  : 'Kirim otomatis pada waktu yang dipilih.'}
+              </small>
+            </div>
+            <Switch checked={auto} onCheckedChange={setAuto} />
+          </label>
+          <div className="info-note">
+            <AlertCircle size={17} />
+            <p>
               {mode === 'Demo'
-                ? 'Preferensi demo. Tidak mengirim postingan.'
-                : 'Kirim otomatis pada waktu yang dipilih.'}
-            </small>
+                ? 'Jadwal demo tersimpan di kalender, tetapi tidak dipublikasikan ke media sosial.'
+                : 'Konten yang dijadwalkan memakai salinan slide saat ini. Perubahan di editor tidak mengubah jadwal.'}
+            </p>
           </div>
-          <Switch checked={auto} onCheckedChange={setAuto} />
-        </label>
-        <div className="info-note">
-          <AlertCircle size={17} />
-          <p>
-            {mode === 'Demo'
-              ? 'Jadwal demo tersimpan di kalender, tetapi tidak dipublikasikan ke media sosial.'
-              : 'Konten yang dijadwalkan memakai salinan slide saat ini. Perubahan di editor tidak mengubah jadwal.'}
-          </p>
-        </div>
+          {schedule?.status === 'needs_attention' && (
+            <label className="retry-confirm">
+              <input
+                type="checkbox"
+                checked={confirmedRetry}
+                onChange={(e) => setConfirmedRetry(e.target.checked)}
+              />
+              <span>
+                Saya sudah memeriksa platform dan memastikan konten belum
+                terpublikasi. Simpan untuk mencoba lagi pada jadwal baru.
+              </span>
+            </label>
+          )}
+        </fieldset>
+        {readOnly && (
+          <div className="info-note">
+            {schedule?.status === 'published'
+              ? 'Postingan sudah terbit. Perubahan konten di studio tidak mengubah postingan di platform.'
+              : schedule?.status === 'processing'
+                ? 'Publikasi sedang diproses. Jadwal dikunci agar tidak terkirim dua kali.'
+                : 'Jadwal ini telah dibatalkan.'}
+          </div>
+        )}
         {error && (
           <div className="feedback error" role="alert">
             {error}
           </div>
         )}
-        <button
-          className="primary full"
-          disabled={!!busy || !chosen}
-          onClick={submit}
-        >
-          {busy ? (
-            <LoaderCircle size={16} className="spinning" />
-          ) : (
-            <CalendarDays size={16} />
-          )}{' '}
-          {busy || 'Simpan jadwal'}
-        </button>
+        {!readOnly && (
+          <button
+            className="primary full"
+            disabled={!!busy || !chosen}
+            onClick={submit}
+          >
+            {busy ? (
+              <LoaderCircle size={16} className="spinning" />
+            ) : (
+              <CalendarDays size={16} />
+            )}{' '}
+            {busy || (schedule ? 'Simpan perubahan' : 'Simpan jadwal')}
+          </button>
+        )}
       </DialogContent>
     </Dialog>
   );

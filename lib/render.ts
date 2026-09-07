@@ -352,13 +352,15 @@ export async function renderBlob(
   design: Design,
   index: number,
   total: number,
+  mime: 'image/png' | 'image/jpeg' = 'image/png',
 ) {
   const canvas = document.createElement('canvas');
   await renderSlide(canvas, slide, brief, design, index, total);
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error('Ekspor gagal.'))),
-      'image/png',
+      mime,
+      0.93,
     ),
   );
 }

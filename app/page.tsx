@@ -1,5 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
+import {
+  SocialAccounts,
+  PublishingScheduler,
+} from '@/components/social-accounts';
 import { TemplatePreview } from '@/components/template-preview';
 import CreativeStudio from '@/components/creative-studio';
 import {
@@ -9,8 +13,10 @@ import {
   ScheduleDialog,
   SettingsView,
 } from '@/components/workspace-views';
-import { Project, Schedule, api, presets } from '@/lib/model';
+import { Project, Schedule, SocialAccount, api, presets } from '@/lib/model';
 import {
+  Send,
+  Link2,
   Sparkles,
   LayoutDashboard,
   Image,
@@ -50,6 +56,8 @@ export default function Home() {
   const [view, setView] = useState('Dashboard');
   const [projects, setProjects] = useState<Project[]>([]);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
+  const [accounts, setAccounts] = useState<SocialAccount[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [loadProject, setLoadProject] = useState<Project | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -62,6 +70,7 @@ export default function Home() {
       api('projects'),
       api('schedules'),
       api('settings'),
+      api('social/accounts'),
     ]);
     let failed = false;
     results.forEach((r, i) => {
@@ -69,13 +78,21 @@ export default function Home() {
         if (i === 0) setProjects(r.value);
         if (i === 1) setSchedules(r.value);
         if (i === 2) setSettings(r.value);
+        if (i === 3) setAccounts(r.value);
       } else failed = true;
     });
     setDataError(failed ? 'Data belum dapat dimuat. Coba muat ulang.' : '');
   }
   useEffect(() => {
     refresh();
+    if (new URLSearchParams(window.location.search).get('view') === 'accounts')
+      setView('Akun Sosial');
   }, []);
+  useEffect(() => {
+    if (!['Kalender', 'Scheduler', 'Akun Sosial'].includes(view)) return;
+    const timer = window.setInterval(refresh, 30000);
+    return () => window.clearInterval(timer);
+  }, [view]);
   const selectTemplate = (id: string) => {
     setSelectedTemplate(id);
     setView('Buat Konten');
@@ -112,7 +129,9 @@ export default function Home() {
               [WandSparkles, 'Buat Konten'],
               [Image, 'Konten Saya'],
               [Layers, 'Template'],
-              [CalendarDays, 'Scheduler'],
+              [Send, 'Scheduler'],
+              [CalendarDays, 'Kalender'],
+              [Link2, 'Akun Sosial'],
             ].map(([Icon, label]: any) => (
               <SidebarMenuItem key={label}>
                 <SidebarMenuButton
@@ -187,7 +206,10 @@ export default function Home() {
               aiReady={!!settings.aiReady}
               defaultHandle={settings.handle}
               onSaved={() => refresh()}
-              onSchedule={setScheduleProject}
+              onSchedule={(p) => {
+                setEditingSchedule(null);
+                setScheduleProject(p);
+              }}
             />
           </div>
           {view === 'Template' && <TemplateGallery onSelect={selectTemplate} />}{' '}
@@ -196,13 +218,46 @@ export default function Home() {
               projects={projects}
               onOpen={openProject}
               onCreate={() => setView('Buat Konten')}
-              onSchedule={setScheduleProject}
+              onSchedule={(p) => {
+                setEditingSchedule(null);
+                setScheduleProject(p);
+              }}
             />
           )}{' '}
+          {view === 'Akun Sosial' && (
+            <SocialAccounts accounts={accounts} onRefresh={refresh} />
+          )}
           {view === 'Scheduler' && (
+            <PublishingScheduler
+              accounts={accounts}
+              schedules={schedules}
+              settings={settings}
+              onAccounts={() => setView('Akun Sosial')}
+              onCalendar={() => setView('Kalender')}
+              onNew={() => {
+                setEditingSchedule(null);
+                setScheduleProject(null);
+              }}
+              onRefresh={refresh}
+            />
+          )}
+          {view === 'Kalender' && (
             <Scheduler
               schedules={schedules}
-              onNew={() => setScheduleProject(null)}
+              onNew={() => {
+                setEditingSchedule(null);
+                setScheduleProject(null);
+              }}
+              onEdit={(s) => {
+                setEditingSchedule(s);
+                setScheduleProject(
+                  projects.find((p) => p.id === s.projectId) || null,
+                );
+              }}
+              onOpenContent={(s) => {
+                const p = projects.find((p) => p.id === s.projectId);
+                if (p) openProject(p);
+              }}
               onRefresh={refresh}
             />
           )}{' '}
@@ -344,15 +399,27 @@ export default function Home() {
           )}
         </main>
         <ScheduleDialog
-          key={scheduleProject?.id || String(scheduleProject)}
+          key={
+            (editingSchedule?.id || 'new') +
+            (scheduleProject?.id || String(scheduleProject))
+          }
+          schedule={editingSchedule}
           project={scheduleProject}
           projects={projects}
-          onClose={() => setScheduleProject(undefined)}
+          onClose={() => {
+            setScheduleProject(undefined);
+            setEditingSchedule(null);
+          }}
           onSaved={() => {
             refresh();
-            setView('Scheduler');
+            setView('Kalender');
           }}
           settings={settings}
+          accounts={accounts}
+          onConnect={() => {
+            setScheduleProject(undefined);
+            setView('Akun Sosial');
+          }}
         />
         <footer className="app-footer">
           Dibuat untuk ide yang terus bergerak.

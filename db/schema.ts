@@ -10,6 +10,9 @@ export const schedules = sqliteTable(
   'schedules',
   {
     id: text('id').primaryKey(),
+    ownerId: text('owner_id'),
+    accountId: text('account_id'),
+    accountName: text('account_name'),
     projectId: text('project_id')
       .notNull()
       .references(() => projects.id),
@@ -27,4 +30,32 @@ export const schedules = sqliteTable(
 export const settings = sqliteTable('settings', {
   id: text('id').primaryKey(),
   payload: text('payload').notNull(),
+});
+export const socialAccounts = sqliteTable(
+  'social_accounts',
+  {
+    id: text('id').primaryKey(),
+    ownerId: text('owner_id').notNull(),
+    platform: text('platform').notNull(),
+    remoteId: text('remote_id').notNull(),
+    name: text('name').notNull(),
+    username: text('username'),
+    token: text('token').notNull(),
+    expiresAt: text('expires_at'),
+    status: text('status').notNull(),
+    permissions: text('permissions').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  (t) => [index('idx_social_owner').on(t.ownerId, t.status)],
+);
+export const oauthStates = sqliteTable('oauth_states', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  browserHash: text('browser_hash').notNull(),
+  expiresAt: text('expires_at').notNull(),
+});
+export const socialConfig = sqliteTable('social_config', {
+  ownerId: text('owner_id').primaryKey(),
+  appId: text('app_id').notNull(),
+  secret: text('secret').notNull(),
 });

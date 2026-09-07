@@ -107,7 +107,21 @@ export type Project = {
   createdAt: string;
   updatedAt: string;
 };
+export type SocialAccount = {
+  id: string;
+  platform: string;
+  name: string;
+  username: string | null;
+  status: string;
+  expiresAt: string | null;
+  updatedAt: string;
+};
 export type Schedule = {
+  caption: string;
+  images: string[];
+  ratio: string;
+  accountId?: string;
+  accountName?: string;
   id: string;
   projectId: string;
   title: string;
